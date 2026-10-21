@@ -1,60 +1,56 @@
-// Generates the first 15 levels into Assets/Resources/Levels (see tools/gen-levels.sh).
-// Inside Unity the same generator is available from the menu: Parcel Sort > Generate Level.
+// Generates Assets/Resources/Levels/level_XXX.json from the hand-drawn fields below.
+// Usage (from the project root): ./tools/gen-levels.sh
 using System;
 using System.IO;
 using ParcelSort.Core;
 
 static class Program
 {
-    // colors, trucks per color, stacks, min/max random win rate.
-    // Difficulty follows an easy-easy-medium-easy-hard rhythm.
-    static readonly double[][] Plan =
+    // Letters: r tomato, g cabbage, b blueberry, y corn, p eggplant, o pumpkin, w cauliflower, k radish.
+    static readonly object[][] Fields =
     {
-        new double[] { 2, 1, 3, 0.90, 1.00 },
-        new double[] { 3, 1, 3, 0.70, 1.00 },
-        new double[] { 3, 2, 4, 0.50, 0.90 },
-        new double[] { 3, 2, 4, 0.60, 1.00 },
-        new double[] { 3, 2, 5, 0.30, 0.50 },
-        new double[] { 4, 2, 5, 0.50, 0.80 },
-        new double[] { 4, 2, 5, 0.40, 0.70 },
-        new double[] { 4, 2, 6, 0.20, 0.40 },
-        new double[] { 4, 2, 5, 0.40, 0.70 },
-        new double[] { 4, 3, 6, 0.05, 0.20 },
-        new double[] { 4, 3, 6, 0.30, 0.60 },
-        new double[] { 4, 3, 6, 0.25, 0.50 },
-        new double[] { 5, 2, 6, 0.10, 0.30 },
-        new double[] { 4, 3, 6, 0.25, 0.50 },
-        new double[] { 5, 3, 7, 0.02, 0.12 },
+        new object[] { "Heart", new[] { ".r.r.", "rrrrr", "rrrrr", ".rrr.", "..r.." } },
+        new object[] { "Tomato", new[] { "..g..", ".rgr.", "rrrrr", "rrrrr", ".rrr." } },
+        new object[] { "Corn", new[] { "..yy..", ".yyyy.", "gyyyyg", "gyyyyg", ".gyyg.", "..gg.." } },
+        new object[] { "Mushroom", new[] { ".rrrr.", "rrwrrr", "rrrrwr", ".wwww.", "..ww..", "..ww.." } },
+        new object[] { "Carrot", new[] { "..g.g..", "..ggg..", "..ooo..", "..ooo..", "..ooo..", "...oo..", "...o..." } },
+        new object[] { "Flower", new[] { ".pp.pp.", "ppyyypp", ".pyyyp.", "ppyyypp", ".pp.pp.", "...g...", "..ggg.." } },
+        new object[] { "Sun", new[] { "y..y..y", ".yoooy.", ".ooooo.", "yoooooy", ".ooooo.", ".yoooy.", "y..y..y" } },
+        new object[] { "Apple Tree", new[] { "..gggg..", ".ggrggg.", "gggggrgg", "grgggggg", ".gggrgg.", "...oo...", "...oo...", "..oooo.." } },
+        new object[] { "Pumpkin", new[] { "...gg...", ".oooooo.", "oooyyooo", "ooyooyoo", "oooooooo", "oooyyooo", ".oooooo." } },
+        new object[] { "Cat", new[] { "o......o", "oo....oo", "oooooooo", "owkoowko", "oooooooo", "oowkkwoo", ".oooooo.", "..o..o.." } },
+        new object[] { "Strawberry", new[] { "..g..g..", ".gggggg.", "rrrrrrrr", "ryrrryrr", "rrryrrrr", ".rrrryr.", "..rrrr..", "...rr..." } },
+        new object[] { "Sunflower", new[] { "..yyyy..", ".yyooyy.", "yyokkoyy", "yokppkoy", "yokppkoy", "yyokkoyy", ".yyooyy.", "..yyyy.." } },
+        new object[] { "Cabbage", new[] { ".gggggg.", "ggwwwwgg", "gwggggwg", "gwgwwgwg", "gwgwwgwg", "gwggggwg", "ggwwwwgg", ".gggggg." } },
+        new object[] { "Rainbow", new[] { "..rrrrr..", ".rooooor.", "royyyyyor", "roygggyor", "roygbgyor", "roygbgyor" } },
+        new object[] { "Berry Pie", new[] { "...ooo...", ".ooooooo.", "oobbbbboo", "obbpppbbo", "obpwwwpbo", "obbpppbbo", "oobbbbboo", ".ooooooo.", "...ooo..." } },
     };
 
     static int Main(string[] args)
     {
-        string folder = args.Length > 0 ? args[0] : "Assets/Resources/Levels";
-        Directory.CreateDirectory(folder);
-        for (int i = 0; i < Plan.Length; i++)
+        string dir = args.Length > 0 ? args[0] : "Assets/Resources/Levels";
+        Directory.CreateDirectory(dir);
+
+        for (int i = 0; i < Fields.Length; i++)
         {
-            var p = Plan[i];
-            var settings = new GeneratorSettings
+            double t = i / (double)(Fields.Length - 1);
+            var settings = new LevelGenerator.Settings
             {
-                colors = (int)p[0],
-                trucksPerColor = (int)p[1],
-                stackCount = (int)p[2],
-                minRandomWinRate = p[3],
-                maxRandomWinRate = p[4],
+                Lanes = i < 8 ? 2 : 3,
+                Bays = i < 4 ? 5 : i < 8 ? 3 : 2,
+                MinCapacity = 2,
+                MaxCapacity = 5 + i / 4,
+                TargetWinRate = 0.95 - 0.7 * t,
             };
-            GeneratedLevel generated = null;
-            for (int seed = 1000 * (i + 1); generated == null && seed < 1000 * (i + 1) + 20; seed++)
-                generated = LevelGenerator.Generate(settings, seed);
-            if (generated == null)
+            var level = LevelGenerator.Generate(i + 1, (string)Fields[i][0], (string[])Fields[i][1], settings, 1000 + i);
+            if (level == null)
             {
-                Console.Error.WriteLine("level " + (i + 1) + ": no level found");
+                Console.Error.WriteLine("No solvable deal for " + Fields[i][0]);
                 return 1;
             }
-            generated.Level.id = i + 1;
-            string path = Path.Combine(folder, string.Format("level_{0:000}.json", i + 1));
-            File.WriteAllText(path, generated.Level.ToJson());
-            Console.WriteLine(string.Format("level {0,2}: random win rate {1:P0}, {2} moves, {3} attempts",
-                i + 1, generated.RandomWinRate, generated.Solve.Solution.Count, generated.Attempts));
+            double rate = Solver.RandomWinRate(level, 200, 7);
+            File.WriteAllText(Path.Combine(dir, string.Format("level_{0:000}.json", i + 1)), level.ToJson());
+            Console.WriteLine("{0,2} {1,-11} {2}x{3} lanes {4} win rate {5:P0}", level.id, level.name, level.Width, level.Height, level.lanes.Length, rate);
         }
         return 0;
     }

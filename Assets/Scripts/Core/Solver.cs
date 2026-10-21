@@ -3,92 +3,97 @@ using System.Collections.Generic;
 
 namespace ParcelSort.Core
 {
-    public class SolveResult
+    /// <summary>A dispatch: the front harvester of a lane, or a parked harvester in a bay.</summary>
+    public struct Move
     {
-        public bool Solvable;
-        /// <summary>Stack indices to tap, in order. Empty when not solvable.</summary>
-        public List<int> Solution = new List<int>();
-        public int NodesVisited;
-        public bool HitNodeLimit;
-    }
+        public bool FromBay;
+        public int Index;
 
-    /// <summary>
-    /// Depth-first search over positions with a memo of dead ends. The solver sees hidden
-    /// parcels, so it answers "can this level be won at all", not "can a player read it".
-    /// </summary>
-    public static class Solver
-    {
-        public static SolveResult Solve(LevelData level, int nodeLimit = 2000000)
+        public Move(bool fromBay, int index)
         {
-            var result = new SolveResult();
-            var start = new GameState(level) { RecordHistory = false };
-            var deadEnds = new HashSet<string>();
-            result.Solvable = Search(start, deadEnds, result, nodeLimit);
-            if (!result.Solvable) result.Solution.Clear();
-            return result;
+            FromBay = fromBay;
+            Index = index;
         }
 
-        static bool Search(GameState state, HashSet<string> deadEnds, SolveResult result, int nodeLimit)
+        public override string ToString()
+        {
+            return (FromBay ? "bay " : "lane ") + Index;
+        }
+    }
+
+    /// <summary>Checks that levels can be won and estimates how hard they feel.</summary>
+    public static class Solver
+    {
+        /// <summary>
+        /// Moves worth trying from a position. Sending a parked harvester that would pick nothing
+        /// just parks it again, so those are skipped.
+        /// </summary>
+        public static List<Move> UsefulMoves(HarvestState state)
+        {
+            var moves = new List<Move>();
+            if (state.Status != GameStatus.Playing) return moves;
+            for (int bay = 0; bay < state.BayCount; bay++)
+            {
+                if (!state.CanDispatchBay(bay)) continue;
+                var lap = state.Preview(true, bay);
+                if (lap.Picks.Count > 0) moves.Add(new Move(true, bay));
+            }
+            for (int lane = 0; lane < state.LaneCount; lane++)
+                if (state.CanDispatchLane(lane)) moves.Add(new Move(false, lane));
+            return moves;
+        }
+
+        public static LapResult Apply(HarvestState state, Move move)
+        {
+            return move.FromBay ? state.DispatchBay(move.Index) : state.DispatchLane(move.Index);
+        }
+
+        /// <summary>A winning sequence of moves, or null if none was found within the node budget.</summary>
+        public static List<Move> Solve(FieldLevel level, int maxNodes = 200000)
+        {
+            var seen = new HashSet<string>();
+            var path = new List<Move>();
+            int nodes = 0;
+            return Search(new HarvestState(level), seen, path, ref nodes, maxNodes) ? path : null;
+        }
+
+        static bool Search(HarvestState state, HashSet<string> seen, List<Move> path, ref int nodes, int maxNodes)
         {
             if (state.Status == GameStatus.Won) return true;
-            if (state.Status == GameStatus.Lost) return false;
-            if (++result.NodesVisited > nodeLimit)
-            {
-                result.HitNodeLimit = true;
-                return false;
-            }
+            if (state.Status == GameStatus.Lost || ++nodes > maxNodes) return false;
+            if (!seen.Add(state.Key())) return false;
 
-            string key = state.PositionKey();
-            if (deadEnds.Contains(key)) return false;
-
-            // Try taps that go straight onto a truck first; they are almost always good moves.
-            var order = new List<int>();
-            var later = new List<int>();
-            for (int s = 0; s < state.Stacks.Count; s++)
-            {
-                if (!state.CanTap(s)) continue;
-                int color = state.Stacks[s][state.Stacks[s].Count - 1].Color;
-                bool fits = false;
-                foreach (var dock in state.Docks) if (dock.Color == color && dock.Load < state.TruckCapacity) fits = true;
-                (fits ? order : later).Add(s);
-            }
-            order.AddRange(later);
-
-            foreach (int s in order)
+            foreach (var move in UsefulMoves(state))
             {
                 var next = state.Clone();
-                next.Tap(s);
-                result.Solution.Add(s);
-                if (Search(next, deadEnds, result, nodeLimit)) return true;
-                result.Solution.RemoveAt(result.Solution.Count - 1);
-                if (result.HitNodeLimit) return false;
+                Apply(next, move);
+                path.Add(move);
+                if (Search(next, seen, path, ref nodes, maxNodes)) return true;
+                path.RemoveAt(path.Count - 1);
             }
-
-            deadEnds.Add(key);
             return false;
         }
 
         /// <summary>
-        /// Share of random playouts that win. Used as a rough difficulty score:
-        /// a level where random tapping often wins is easy.
+        /// Share of games a careless player wins: each turn they pick a random useful move.
+        /// Higher is easier.
         /// </summary>
-        public static double RandomWinRate(LevelData level, int playouts, int seed)
+        public static double RandomWinRate(FieldLevel level, int games, int seed)
         {
             var rng = new Random(seed);
             int wins = 0;
-            var choices = new List<int>();
-            for (int p = 0; p < playouts; p++)
+            for (int g = 0; g < games; g++)
             {
-                var state = new GameState(level) { RecordHistory = false };
+                var state = new HarvestState(level);
                 while (state.Status == GameStatus.Playing)
                 {
-                    choices.Clear();
-                    for (int s = 0; s < state.Stacks.Count; s++) if (state.CanTap(s)) choices.Add(s);
-                    state.Tap(choices[rng.Next(choices.Count)]);
+                    var moves = UsefulMoves(state);
+                    if (moves.Count == 0) break;
+                    Apply(state, moves[rng.Next(moves.Count)]);
                 }
                 if (state.Status == GameStatus.Won) wins++;
             }
-            return (double)wins / playouts;
+            return (double)wins / games;
         }
     }
 }

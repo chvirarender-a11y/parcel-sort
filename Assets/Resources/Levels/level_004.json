@@ -1,8 +1,17 @@
 {
   "id": 4,
-  "bufferSize": 5,
-  "dockCount": 2,
-  "truckCapacity": 3,
-  "trucks": "yogogy",
-  "stacks": ["ogg", "ogygo", "yygyo", "ogyoy"]
+  "name": "Mushroom",
+  "bays": 5,
+  "field": [
+    ".rrrr.",
+    "rrwrrr",
+    "rrrrwr",
+    ".wwww.",
+    "..ww..",
+    "..ww.."
+  ],
+  "lanes": [
+    "w2 r3 r5 w3",
+    "w2 w3 r2 r4"
+  ]
 }

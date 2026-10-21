@@ -1,8 +1,19 @@
 {
   "id": 9,
-  "bufferSize": 5,
-  "dockCount": 2,
-  "truckCapacity": 3,
-  "trucks": "gocrcorg",
-  "stacks": ["croc", "rgrgoo", "occrg", "ggrogr", "coc"]
+  "name": "Pumpkin",
+  "bays": 2,
+  "field": [
+    "...gg...",
+    ".oooooo.",
+    "oooyyooo",
+    "ooyooyoo",
+    "oooooooo",
+    "oooyyooo",
+    ".oooooo."
+  ],
+  "lanes": [
+    "y3 o6 o7 o6",
+    "o3 o2 o4 g2",
+    "o4 y3 o3 o3"
+  ]
 }

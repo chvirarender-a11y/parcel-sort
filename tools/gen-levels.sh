@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regenerates Assets/Resources/Levels/level_001..015.json with Mono. Run from the project root.
+# Regenerates Assets/Resources/Levels/level_XXX.json with Mono. Run from the project root.
 set -euo pipefail
 out=$(mktemp -d)
 mcs -nologo -out:"$out/levelgen.exe" Assets/Scripts/Core/*.cs tools/levelgen/Program.cs

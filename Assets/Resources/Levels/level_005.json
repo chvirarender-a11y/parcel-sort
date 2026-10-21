@@ -1,8 +1,18 @@
 {
   "id": 5,
-  "bufferSize": 5,
-  "dockCount": 2,
-  "truckCapacity": 3,
-  "trucks": "rcroco",
-  "stacks": ["rc", "croooc", "rrcor", "co", "roc"]
+  "name": "Carrot",
+  "bays": 3,
+  "field": [
+    "..g.g..",
+    "..ggg..",
+    "..ooo..",
+    "..ooo..",
+    "..ooo..",
+    "...oo..",
+    "...o..."
+  ],
+  "lanes": [
+    "g2 g3 o2",
+    "o4 o6"
+  ]
 }

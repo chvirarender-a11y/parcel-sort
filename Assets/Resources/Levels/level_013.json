@@ -1,8 +1,20 @@
 {
   "id": 13,
-  "bufferSize": 5,
-  "dockCount": 2,
-  "truckCapacity": 3,
-  "trucks": "cyowbcowyb",
-  "stacks": ["ocycw", "yobboy", "bwcoy", "wobcc", "wcww", "byboy"]
+  "name": "Cabbage",
+  "bays": 2,
+  "field": [
+    ".gggggg.",
+    "ggwwwwgg",
+    "gwggggwg",
+    "gwgwwgwg",
+    "gwgwwgwg",
+    "gwggggwg",
+    "ggwwwwgg",
+    ".gggggg."
+  ],
+  "lanes": [
+    "g3 g4 g8 g8 w2",
+    "w2 g6 w5 g3 g3",
+    "w3 w5 w3 g5"
+  ]
 }

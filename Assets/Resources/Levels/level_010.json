@@ -1,8 +1,20 @@
 {
   "id": 10,
-  "bufferSize": 5,
-  "dockCount": 2,
-  "truckCapacity": 3,
-  "trucks": "ybwcwyccwbby",
-  "stacks": ["wwwwy", "bcybbc", "ccyww", "cccbcwb", "bywwyyy", "bbcyyb"]
+  "name": "Cat",
+  "bays": 2,
+  "field": [
+    "o......o",
+    "oo....oo",
+    "oooooooo",
+    "owkoowko",
+    "oooooooo",
+    "oowkkwoo",
+    ".oooooo.",
+    "..o..o.."
+  ],
+  "lanes": [
+    "w2 o3 k4 o2 o4",
+    "w2 o7 o2 o3",
+    "o5 o5 o4 o3"
+  ]
 }

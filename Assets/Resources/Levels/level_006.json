@@ -1,8 +1,18 @@
 {
   "id": 6,
-  "bufferSize": 5,
-  "dockCount": 2,
-  "truckCapacity": 3,
-  "trucks": "bpooyybp",
-  "stacks": ["oyb", "ypb", "ypyypo", "pbpyob", "boboop"]
+  "name": "Flower",
+  "bays": 3,
+  "field": [
+    ".pp.pp.",
+    "ppyyypp",
+    ".pyyyp.",
+    "ppyyypp",
+    ".pp.pp.",
+    "...g...",
+    "..ggg.."
+  ],
+  "lanes": [
+    "p2 g4 p4 p6",
+    "p6 y4 y5"
+  ]
 }
