@@ -1,0 +1,6 @@
+{
+    "name": "ParcelSort.Core",
+    "rootNamespace": "ParcelSort.Core",
+    "references": [],
+    "noEngineReferences": true
+}

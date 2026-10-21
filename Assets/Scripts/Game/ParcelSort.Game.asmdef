@@ -1,0 +1,8 @@
+{
+    "name": "ParcelSort.Game",
+    "rootNamespace": "ParcelSort.Game",
+    "references": [
+        "ParcelSort.Core",
+        "UnityEngine.UI"
+    ]
+}

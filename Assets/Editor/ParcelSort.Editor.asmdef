@@ -1,0 +1,10 @@
+{
+    "name": "ParcelSort.Editor",
+    "rootNamespace": "ParcelSort.Editor",
+    "references": [
+        "ParcelSort.Core"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ]
+}

@@ -1,0 +1,8 @@
+{
+  "id": 5,
+  "bufferSize": 5,
+  "dockCount": 2,
+  "truckCapacity": 3,
+  "trucks": "rcroco",
+  "stacks": ["rc", "croooc", "rrcor", "co", "roc"]
+}
