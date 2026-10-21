@@ -31,6 +31,7 @@
 | `Assets/Editor` | 编辑器菜单：Parcel Sort → Check All Levels / Reset Progress |
 | `Assets/Tests/EditMode` | 单元测试（Window → General → Test Runner） |
 | `Assets/Resources/Levels` | 关卡文件 `level_001.json` 起 |
+| `Assets/Resources/Art` | 美术图片（透明 PNG）。缺哪张，游戏就用色块代替 |
 | `tools/` | 不开 Unity 也能跑测试和生成关卡的脚本（需要 Mono） |
 
 ## 关卡格式
@@ -60,3 +61,15 @@
 ```
 
 关卡生成方式：随机生成候选关卡，求解器确认能通关，再用「随机乱点的通关率」衡量难度，只保留难度落在目标区间的关卡。前 15 关按「易-易-中-易-难」的节奏排列。
+
+## 加入美术图片
+
+图片用纯品红色背景（#FF00FF）生成，然后用脚本抠成透明 PNG 并放进 `Assets/Resources/Art`：
+
+```bash
+# 需要灰度、会被游戏染色的图（parcel_base、truck_cargo 等）加 --normalize
+python3 tools/art/key_magenta.py 原图.png Assets/Resources/Art/parcel_base.png --max-size 512 --normalize
+python3 tools/art/key_magenta.py 原图.png Assets/Resources/Art/truck_cab.png --max-size 1024
+```
+
+文件名必须和素材清单一致，游戏会按文件名自动加载。
