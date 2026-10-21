@@ -1,119 +1,92 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace ParcelSort.Core
 {
-    [Serializable]
-    public class GeneratorSettings
-    {
-        public int colors = 3;
-        public int trucksPerColor = 2;
-        public int stackCount = 4;
-        public int bufferSize = 5;
-        public int dockCount = 2;
-        public int truckCapacity = 3;
-        /// <summary>Chance that a parcel below the top of its stack starts hidden.</summary>
-        public double hiddenChance;
-        /// <summary>Accept only levels whose random-play win rate falls in this range.</summary>
-        public double minRandomWinRate;
-        public double maxRandomWinRate = 1.0;
-    }
-
-    public class GeneratedLevel
-    {
-        public LevelData Level;
-        public SolveResult Solve;
-        public double RandomWinRate;
-        public int Attempts;
-    }
-
     /// <summary>
-    /// Makes random candidate levels and keeps the first one the solver can win
-    /// whose difficulty is in the requested range.
+    /// Turns a pixel-art field into a level: splits each crop color into harvesters, deals them into
+    /// lanes, and keeps the solvable deal whose random-play win rate is closest to the target.
     /// </summary>
     public static class LevelGenerator
     {
-        public static GeneratedLevel Generate(GeneratorSettings settings, int seed, int maxAttempts = 500)
+        public class Settings
+        {
+            public int Lanes = 3;
+            public int Bays = 5;
+            public int MinCapacity = 4;
+            public int MaxCapacity = 12;
+            /// <summary>0..1 share of careless games won. Lower is harder.</summary>
+            public double TargetWinRate = 0.5;
+            public int Attempts = 40;
+            public int PlayoutsPerAttempt = 40;
+        }
+
+        public static FieldLevel Generate(int id, string name, string[] field, Settings settings, int seed)
         {
             var rng = new Random(seed);
-            for (int attempt = 1; attempt <= maxAttempts; attempt++)
-            {
-                var level = MakeCandidate(settings, rng);
-                var solve = Solver.Solve(level, 200000);
-                if (!solve.Solvable) continue;
-                double winRate = Solver.RandomWinRate(level, 200, seed + attempt);
-                if (winRate < settings.minRandomWinRate || winRate > settings.maxRandomWinRate) continue;
-                return new GeneratedLevel { Level = level, Solve = solve, RandomWinRate = winRate, Attempts = attempt };
-            }
-            return null;
-        }
+            FieldLevel best = null;
+            double bestGap = double.MaxValue;
 
-        public static LevelData MakeCandidate(GeneratorSettings settings, Random rng)
-        {
-            var colorPool = new List<int>();
-            for (int c = 0; c < ParcelColors.Count; c++) colorPool.Add(c);
-            Shuffle(colorPool, rng);
-            colorPool.RemoveRange(settings.colors, colorPool.Count - settings.colors);
-
-            var trucks = new List<int>();
-            var parcels = new List<int>();
-            foreach (int color in colorPool)
+            for (int attempt = 0; attempt < settings.Attempts; attempt++)
             {
-                for (int t = 0; t < settings.trucksPerColor; t++)
+                var level = new FieldLevel { id = id, name = name, bays = settings.Bays, field = field };
+                level.lanes = Deal(Split(level, settings, rng), settings.Lanes, rng);
+                if (level.Validate().Count > 0 || Solver.Solve(level, 50000) == null) continue;
+
+                double rate = Solver.RandomWinRate(level, settings.PlayoutsPerAttempt, rng.Next());
+                double gap = Math.Abs(rate - settings.TargetWinRate);
+                if (gap < bestGap)
                 {
-                    trucks.Add(color);
-                    for (int p = 0; p < settings.truckCapacity; p++) parcels.Add(color);
+                    best = level;
+                    bestGap = gap;
                 }
             }
-            Shuffle(trucks, rng);
-            Shuffle(parcels, rng);
-
-            // Deal parcels round-robin so stacks have similar heights, then shift a few for variety.
-            var stacks = new List<StringBuilder>();
-            for (int s = 0; s < settings.stackCount; s++) stacks.Add(new StringBuilder());
-            for (int i = 0; i < parcels.Count; i++) stacks[i % settings.stackCount].Append(ParcelColors.ToLetter(parcels[i]));
-            for (int i = 0; i < settings.stackCount; i++)
-            {
-                var from = stacks[rng.Next(stacks.Count)];
-                var to = stacks[rng.Next(stacks.Count)];
-                if (from == to || from.Length <= 2) continue;
-                to.Append(from[from.Length - 1]);
-                from.Length--;
-            }
-
-            var level = new LevelData
-            {
-                bufferSize = settings.bufferSize,
-                dockCount = settings.dockCount,
-                truckCapacity = settings.truckCapacity,
-                stacks = new string[stacks.Count],
-            };
-            var truckLetters = new StringBuilder();
-            foreach (int t in trucks) truckLetters.Append(ParcelColors.ToLetter(t));
-            level.trucks = truckLetters.ToString();
-
-            for (int s = 0; s < stacks.Count; s++)
-            {
-                var chars = stacks[s].ToString().ToCharArray();
-                for (int i = 0; i < chars.Length - 1; i++)
-                {
-                    if (rng.NextDouble() < settings.hiddenChance) chars[i] = char.ToUpperInvariant(chars[i]);
-                }
-                level.stacks[s] = new string(chars);
-            }
-            return level;
+            return best;
         }
 
-        static void Shuffle<T>(List<T> list, Random rng)
+        static List<Harvester> Split(FieldLevel level, Settings settings, Random rng)
         {
-            for (int i = list.Count - 1; i > 0; i--)
+            var counts = new int[Crops.Count];
+            for (int y = 0; y < level.Height; y++)
+                for (int x = 0; x < level.Width; x++)
+                {
+                    int crop = level.CropAt(x, y);
+                    if (crop != Crops.None) counts[crop]++;
+                }
+
+            var result = new List<Harvester>();
+            for (int color = 0; color < Crops.Count; color++)
+            {
+                int left = counts[color];
+                while (left > 0)
+                {
+                    int size = Math.Min(left, rng.Next(settings.MinCapacity, settings.MaxCapacity + 1));
+                    // Never leave a crumb smaller than the minimum; fold it into this harvester.
+                    if (left - size > 0 && left - size < settings.MinCapacity) size = left;
+                    result.Add(new Harvester(color, size));
+                    left -= size;
+                }
+            }
+            return result;
+        }
+
+        static string[] Deal(List<Harvester> harvesters, int laneCount, Random rng)
+        {
+            for (int i = harvesters.Count - 1; i > 0; i--)
             {
                 int j = rng.Next(i + 1);
-                T tmp = list[i];
-                list[i] = list[j];
-                list[j] = tmp;
+                var t = harvesters[i];
+                harvesters[i] = harvesters[j];
+                harvesters[j] = t;
             }
+            laneCount = Math.Max(1, Math.Min(laneCount, harvesters.Count));
+            var lanes = new List<Harvester>[laneCount];
+            for (int i = 0; i < laneCount; i++) lanes[i] = new List<Harvester>();
+            for (int i = 0; i < harvesters.Count; i++) lanes[i % laneCount].Add(harvesters[i]);
+
+            var result = new string[laneCount];
+            for (int i = 0; i < laneCount; i++) result[i] = FieldLevel.FormatLane(lanes[i]);
+            return result;
         }
     }
 }

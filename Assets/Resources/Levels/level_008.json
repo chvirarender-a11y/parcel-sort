@@ -1,8 +1,19 @@
 {
   "id": 8,
-  "bufferSize": 5,
-  "dockCount": 2,
-  "truckCapacity": 3,
-  "trucks": "ggwprwpr",
-  "stacks": ["gwp", "pw", "wprwwr", "rgrg", "prrppg", "gwg"]
+  "name": "Apple Tree",
+  "bays": 3,
+  "field": [
+    "..gggg..",
+    ".ggrggg.",
+    "gggggrgg",
+    "grgggggg",
+    ".gggrgg.",
+    "...oo...",
+    "...oo...",
+    "..oooo.."
+  ],
+  "lanes": [
+    "g4 o4 g6 g5 g4",
+    "g2 r4 o4 g4 g3"
+  ]
 }

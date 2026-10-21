@@ -1,8 +1,21 @@
 {
   "id": 15,
-  "bufferSize": 5,
-  "dockCount": 2,
-  "truckCapacity": 3,
-  "trucks": "prboyboproyyrpb",
-  "stacks": ["prrpyyr", "yybyppbr", "bpybooo", "pobbop", "yroooyrp", "yrbp", "rrobb"]
+  "name": "Berry Pie",
+  "bays": 2,
+  "field": [
+    "...ooo...",
+    ".ooooooo.",
+    "oobbbbboo",
+    "obbpppbbo",
+    "obpwwwpbo",
+    "obbpppbbo",
+    "oobbbbboo",
+    ".ooooooo.",
+    "...ooo..."
+  ],
+  "lanes": [
+    "o6 b7 o6 o4 o2",
+    "o6 b2 w3 o6 p2",
+    "b5 b6 o4 p3 p3"
+  ]
 }

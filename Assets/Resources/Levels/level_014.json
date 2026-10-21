@@ -1,8 +1,18 @@
 {
   "id": 14,
-  "bufferSize": 5,
-  "dockCount": 2,
-  "truckCapacity": 3,
-  "trucks": "wpcowpcowcpo",
-  "stacks": ["ppopw", "cccpwow", "ocowoww", "pcocc", "wpwpow", "coopcp"]
+  "name": "Rainbow",
+  "bays": 2,
+  "field": [
+    "..rrrrr..",
+    ".rooooor.",
+    "royyyyyor",
+    "roygggyor",
+    "roygbgyor",
+    "roygbgyor"
+  ],
+  "lanes": [
+    "y8 g7 o6",
+    "r4 y3 o7",
+    "r6 r5 b2"
+  ]
 }

@@ -1,8 +1,18 @@
 {
   "id": 7,
-  "bufferSize": 5,
-  "dockCount": 2,
-  "truckCapacity": 3,
-  "trucks": "ypgpcgyc",
-  "stacks": ["ggcy", "pycypc", "ccgppg", "cypy", "yggp"]
+  "name": "Sun",
+  "bays": 3,
+  "field": [
+    "y..y..y",
+    ".yoooy.",
+    ".ooooo.",
+    "yoooooy",
+    ".ooooo.",
+    ".yoooy.",
+    "y..y..y"
+  ],
+  "lanes": [
+    "o2 o2 o4 o5 y3",
+    "o5 y3 y6 o3"
+  ]
 }

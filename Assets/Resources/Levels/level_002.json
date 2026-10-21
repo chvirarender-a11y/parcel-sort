@@ -1,8 +1,16 @@
 {
   "id": 2,
-  "bufferSize": 5,
-  "dockCount": 2,
-  "truckCapacity": 3,
-  "trucks": "yog",
-  "stacks": ["oygg", "oyg", "oy"]
+  "name": "Tomato",
+  "bays": 5,
+  "field": [
+    "..g..",
+    ".rgr.",
+    "rrrrr",
+    "rrrrr",
+    ".rrr."
+  ],
+  "lanes": [
+    "r4 r4 r2",
+    "g2 r2 r3"
+  ]
 }

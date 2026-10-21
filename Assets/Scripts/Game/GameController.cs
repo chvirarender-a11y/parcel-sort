@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using ParcelSort.Core;
 using ParcelSort.Game.World;
@@ -8,24 +7,30 @@ using UnityEngine.EventSystems;
 namespace ParcelSort.Game
 {
     /// <summary>
-    /// Runs a level: loads levels from Resources/Levels, applies taps to the GameState,
-    /// lets the 3D board animate them and draws the HUD (buttons, next trucks, results).
+    /// Runs a level: loads levels from Resources/Levels, applies taps to the HarvestState,
+    /// hands the results to the 3D farm to animate, and draws the HUD and result panels.
     /// </summary>
     public class GameController : MonoBehaviour
     {
-        const string ProgressKey = "ParcelSort.Level";
+        const string ProgressKey = "Harvest.Level";
 
-        static readonly Color Ink = new Color(0.20f, 0.18f, 0.16f);
-        static readonly Color Paper = new Color(0.97f, 0.95f, 0.90f);
-        static readonly Color ButtonColor = new Color(0.25f, 0.45f, 0.75f);
+        static readonly Color Ink = new Color(0.24f, 0.22f, 0.20f);
+        static readonly Color Soft = new Color(0.50f, 0.48f, 0.45f);
+        static readonly Color Paper = new Color(1f, 0.99f, 0.96f, 0.94f);
+        static readonly Color Track = new Color(0.90f, 0.88f, 0.82f);
+        static readonly Color Progress = new Color(0.47f, 0.80f, 0.42f);
+        static readonly Color UndoColor = new Color(0.45f, 0.66f, 0.95f);
+        static readonly Color MergeColor = new Color(0.98f, 0.64f, 0.33f);
+        static readonly Color RestartColor = new Color(0.62f, 0.62f, 0.70f);
+        static readonly Color GoColor = new Color(0.40f, 0.76f, 0.42f);
+        static readonly Color StarOn = new Color(1f, 0.80f, 0.25f);
+        static readonly Color StarOff = new Color(0.86f, 0.84f, 0.80f);
 
-        // Second channel besides color, for color-blind players.
-        static readonly string[] ParcelSymbols = { "R", "G", "B", "Y", "P", "O", "C", "W" };
-
-        readonly List<LevelData> levels = new List<LevelData>();
+        readonly List<FieldLevel> levels = new List<FieldLevel>();
         int levelIndex;
-        GameState state;
-        Board3D board;
+        int totalCrops;
+        HarvestState state;
+        FarmBoard board;
         RectTransform hud;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -43,13 +48,15 @@ namespace ParcelSort.Game
             if (FindAnyObjectByType<EventSystem>() == null)
                 new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
 
-            board = gameObject.AddComponent<Board3D>();
-            board.StackTapped += OnTapStack;
+            board = gameObject.AddComponent<FarmBoard>();
+            board.Tapped += OnTap;
+            board.Held += OnHold;
+            board.Settled += DrawHud;
             hud = Ui.Fill("HUD", Ui.CreateCanvas("Canvas").transform);
 
             foreach (var asset in Resources.LoadAll<TextAsset>("Levels"))
             {
-                var level = LevelData.FromJson(asset.text);
+                var level = FieldLevel.FromJson(asset.text);
                 var errors = level.Validate();
                 if (errors.Count > 0) Debug.LogError(asset.name + ": " + string.Join("; ", errors));
                 else levels.Add(level);
@@ -67,32 +74,34 @@ namespace ParcelSort.Game
         void StartLevel(int index)
         {
             levelIndex = index;
-            state = new GameState(levels[index]);
+            state = new HarvestState(levels[index]);
+            totalCrops = state.CropsLeft;
             board.BuildLevel(state);
             DrawHud();
         }
 
-        void OnTapStack(int stack)
+        void OnTap(Move move)
         {
-            if (board.Busy) return;
-            var before = state.Clone();
-            var move = state.Tap(stack);
-            if (move == null) return;
+            if (state.Status != GameStatus.Playing) return;
+            if (move.FromBay && !board.CanTapBay(move.Index)) return;
+            var lap = Solver.Apply(state, move);
+            if (lap == null) return;
             if (state.Status == GameStatus.Won)
             {
                 PlayerPrefs.SetInt(ProgressKey, (levelIndex + 1) % levels.Count);
                 PlayerPrefs.Save();
             }
-            StartCoroutine(PlayMove(before, move));
-        }
-
-        IEnumerator PlayMove(GameState before, MoveResult move)
-        {
-            yield return board.PlayMove(before, move, state);
+            board.Launch(lap);
             DrawHud();
         }
 
-        /// <summary>For actions that change the state without an animation (undo, boosters).</summary>
+        void OnHold(Move move)
+        {
+            if (move.FromBay && !board.CanTapBay(move.Index)) return;
+            board.ShowPreview(state.Preview(move.FromBay, move.Index));
+        }
+
+        /// <summary>For changes that rebuild the farm without animation: undo, merge, revive.</summary>
         void ApplyInstantly(bool changed)
         {
             if (!changed) return;
@@ -103,50 +112,67 @@ namespace ParcelSort.Game
         void DrawHud()
         {
             Ui.Clear(hud);
+            bool idle = board.Idle;
 
-            Ui.Label(hud, "Level " + state.Level.id, 56, Ink, 40, 50, 460, 100, TextAnchor.MiddleLeft);
-            Ui.TextButton(hud, "Restart", ButtonColor, 520, 50, 170, 100, () => { if (!board.Busy) StartLevel(levelIndex); });
-            var undo = Ui.TextButton(hud, "Undo", ButtonColor, 705, 50, 150, 100, () => ApplyInstantly(!board.Busy && state.Undo()));
-            undo.interactable = state.CanUndo;
-            var extra = Ui.TextButton(hud, "+1 Slot", ButtonColor, 870, 50, 170, 100, () => ApplyInstantly(!board.Busy && state.AddBufferSlot()));
-            extra.interactable = !state.ExtraSlotUsed && state.Status == GameStatus.Playing;
+            Ui.Box(hud, Paper, 0, 0, 1080, 260, "Top bar");
+            var level = state.Level;
+            Ui.Label(hud, "LEVEL " + level.id, 30, Soft, 44, 34, 520, 44, TextAnchor.MiddleLeft);
+            Ui.Label(hud, level.name, 60, Ink, 40, 74, 560, 80, TextAnchor.MiddleLeft);
 
-            Ui.Label(hud, "Next", 36, Ink, 40, 175, 100, 60, TextAnchor.MiddleLeft);
-            int shown = 0;
-            for (int t = state.NextTruck; t < state.Level.trucks.Length && shown < 6; t++, shown++)
-            {
-                int color = ParcelColors.FromLetter(state.Level.trucks[t]);
-                var next = Ui.Box(hud, Board3D.Palette[color], 140 + shown * 80, 180, 64, 50, "Next truck");
-                Ui.Label(next.transform, ParcelSymbols[color], 30, Ink, 0, 0, 64, 50);
-            }
-            if (shown == 0) Ui.Label(hud, "-", 36, Ink, 140, 175, 100, 60, TextAnchor.MiddleLeft);
+            var undo = Ui.TextButton(hud, "Undo " + state.UndosLeft, UndoColor, 560, 44, 160, 100,
+                () => ApplyInstantly(board.Idle && state.Undo()));
+            undo.interactable = idle && state.CanUndo && state.Status != GameStatus.Won;
+            var merge = Ui.TextButton(hud, "Merge " + state.MergesLeft, MergeColor, 732, 44, 170, 100,
+                () => ApplyInstantly(board.Idle && state.MergeBays().Count > 0));
+            merge.interactable = idle && state.CanMerge;
+            Ui.TextButton(hud, "Reset", RestartColor, 914, 44, 120, 100, () => StartLevel(levelIndex));
 
-            Ui.Label(hud, "Shelf " + state.Buffer.Count + " / " + state.BufferCapacity, 36, Ink, 640, 175, 400, 60, TextAnchor.MiddleRight);
+            int harvested = totalCrops - state.CropsLeft;
+            Ui.Box(hud, Track, 44, 176, 992, 34, "Progress track");
+            if (harvested > 0) Ui.Box(hud, Progress, 44, 176, 992f * harvested / totalCrops, 34, "Progress");
+            Ui.Label(hud, harvested + " / " + totalCrops, 26, Ink, 44, 176, 992, 34);
 
-            if (state.Status != GameStatus.Playing) DrawResult();
+            if (level.id <= 2 && state.Moves == 0)
+                Ui.Label(hud, "Tap a harvester to send it round the field.  Hold to preview.", 30, Soft, 0, 270, 1080, 50);
+
+            if (state.Status != GameStatus.Playing && idle) DrawResult();
         }
 
         void DrawResult()
         {
-            Ui.FillBox(hud, new Color(0, 0, 0, 0.5f), "Shade");
-            var panel = Ui.Box(hud, Paper, 140, 640, 800, 640, "Result");
+            Ui.FillBox(hud, new Color(0.15f, 0.20f, 0.15f, 0.45f), "Shade");
+            var panel = Ui.Box(hud, new Color(1f, 0.99f, 0.96f), 120, 600, 840, 700, "Result").transform;
 
             if (state.Status == GameStatus.Won)
             {
-                Ui.Label(panel.transform, "Level complete!", 64, Ink, 0, 60, 800, 100);
-                Ui.Label(panel.transform, "Stars: " + state.Stars + " / 3", 52, Ink, 0, 190, 800, 80);
-                Ui.Label(panel.transform, state.Moves + " taps, shelf peak " + state.MaxBufferUsed, 36, Ink, 0, 280, 800, 60);
-                Ui.TextButton(panel.transform, "Next level", ButtonColor, 200, 420, 400, 120,
-                    () => StartLevel((levelIndex + 1) % levels.Count));
+                Ui.Label(panel, "Harvest complete!", 64, Ink, 0, 60, 840, 100);
+                for (int i = 0; i < 3; i++)
+                {
+                    var star = Ui.Box(panel, i < state.Stars ? StarOn : StarOff, 250 + i * 130, 210, 90, 90, "Star");
+                    star.rectTransform.localRotation = Quaternion.Euler(0, 0, 45);
+                }
+                string note = state.Revived ? "Revived once" : state.UndoUsed ? "Used undo" : "Perfect run!";
+                Ui.Label(panel, note + "   ·   best combo " + state.BestCombo, 34, Soft, 0, 350, 840, 60);
+                Ui.TextButton(panel, "Next field", GoColor, 220, 480, 400, 130, () => StartLevel((levelIndex + 1) % levels.Count));
+                return;
             }
-            else
+
+            Ui.Label(panel, "No free bay!", 64, Ink, 0, 60, 840, 100);
+            Ui.Label(panel, "A harvester still had room but every bay was taken.", 32, Soft, 40, 170, 760, 60);
+            float x = 60;
+            if (!state.Revived)
             {
-                Ui.Label(panel.transform, "Shelf is full!", 64, Ink, 0, 60, 800, 100);
-                Ui.Label(panel.transform, "Revive puts 3 parcels back.\n(A rewarded ad will go here.)", 36, Ink, 0, 180, 800, 140);
-                Ui.TextButton(panel.transform, "Revive", new Color(0.30f, 0.65f, 0.35f), 80, 420, 300, 120,
-                    () => ApplyInstantly(state.Revive()));
-                Ui.TextButton(panel.transform, "Retry", ButtonColor, 420, 420, 300, 120, () => StartLevel(levelIndex));
+                // Rewarded ad goes here later. No interstitials on failure, by design.
+                Ui.TextButton(panel, "+1 Bay", GoColor, x, 300, 230, 130, () => ApplyInstantly(state.Revive()));
+                x += 250;
             }
+            if (state.CanUndo)
+            {
+                Ui.TextButton(panel, "Undo", UndoColor, x, 300, 230, 130, () => ApplyInstantly(state.Undo()));
+                x += 250;
+            }
+            Ui.TextButton(panel, "Retry", RestartColor, x, 300, 230, 130, () => StartLevel(levelIndex));
+            Ui.Label(panel, "+1 Bay: watch a short video (coming soon)", 28, Soft, 0, 470, 840, 50);
         }
     }
 }

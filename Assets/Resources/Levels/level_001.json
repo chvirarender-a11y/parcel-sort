@@ -1,8 +1,16 @@
 {
   "id": 1,
-  "bufferSize": 5,
-  "dockCount": 2,
-  "truckCapacity": 3,
-  "trucks": "yo",
-  "stacks": ["oy", "oo", "yy"]
+  "name": "Heart",
+  "bays": 5,
+  "field": [
+    ".r.r.",
+    "rrrrr",
+    "rrrrr",
+    ".rrr.",
+    "..r.."
+  ],
+  "lanes": [
+    "r5 r2 r5",
+    "r2 r2"
+  ]
 }

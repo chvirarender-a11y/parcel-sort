@@ -1,8 +1,20 @@
 {
   "id": 12,
-  "bufferSize": 5,
-  "dockCount": 2,
-  "truckCapacity": 3,
-  "trucks": "gwpogwpowgop",
-  "stacks": ["pggwppg", "ooowoo", "pgowg", "pgwpg", "gpoppoogw", "wwww"]
+  "name": "Sunflower",
+  "bays": 2,
+  "field": [
+    "..yyyy..",
+    ".yyooyy.",
+    "yyokkoyy",
+    "yokppkoy",
+    "yokppkoy",
+    "yyokkoyy",
+    ".yyooyy.",
+    "..yyyy.."
+  ],
+  "lanes": [
+    "p4 o5 y2 y2",
+    "y2 y5 k3 y4",
+    "y7 o7 y6 k5"
+  ]
 }

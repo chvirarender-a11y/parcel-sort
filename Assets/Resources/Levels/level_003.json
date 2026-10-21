@@ -1,8 +1,17 @@
 {
   "id": 3,
-  "bufferSize": 5,
-  "dockCount": 2,
-  "truckCapacity": 3,
-  "trucks": "ygybgb",
-  "stacks": ["gygb", "bgygy", "gbby", "gbbyy"]
+  "name": "Corn",
+  "bays": 5,
+  "field": [
+    "..yy..",
+    ".yyyy.",
+    "gyyyyg",
+    "gyyyyg",
+    ".gyyg.",
+    "..gg.."
+  ],
+  "lanes": [
+    "y4 y2 y3 g2",
+    "y5 g6 y2"
+  ]
 }
