@@ -135,6 +135,11 @@ namespace ParcelSort.Game
                     Ui.Label(empty.transform, "(empty)", 40, Ink, 0, 0, truckW, truckH);
                     continue;
                 }
+                if (Art.TruckCab != null && Art.TruckCargo != null)
+                {
+                    DrawTruck(dock, x, top, truckW, truckH);
+                    continue;
+                }
                 var body = Ui.Box(root, ParcelPalette[dock.Color], x, top, truckW, truckH, "Truck");
                 Ui.Label(body.transform, "TRUCK  " + ParcelSymbols[dock.Color], 40, Ink, 0, 10, truckW, 60);
                 for (int s = 0; s < state.TruckCapacity; s++)
@@ -154,6 +159,30 @@ namespace ParcelSort.Game
                 Ui.Label(next.transform, ParcelSymbols[color], 32, Ink, 0, 0, 70, 60);
             }
             if (shown == 0) Ui.Label(root, "none", 40, Ink, 200, 460, 200, 70, TextAnchor.MiddleLeft);
+        }
+
+        /// <summary>Truck drawn from art: cab, then loaded parcels, then the tinted cargo box in front.</summary>
+        void DrawTruck(Dock dock, float x, float top, float w, float h)
+        {
+            float cabH = w / Art.Aspect(Art.TruckCab);
+            float cabY = top + h - cabH;
+            var cab = Ui.Box(root, Color.white, x, cabY, w, cabH, "Truck cab");
+            cab.sprite = Art.TruckCab;
+
+            float cargoW = w * Art.CargoWidth;
+            float cargoH = cargoW / Art.Aspect(Art.TruckCargo);
+            float cargoX = x + w * Art.CargoLeft;
+            float cargoY = cabY + cabH * Art.BedTop - cargoH;
+
+            float parcelSize = cargoW / state.TruckCapacity * 0.62f;
+            for (int i = 0; i < dock.Load; i++)
+            {
+                float px = cargoX + cargoW * (i + 0.5f) / state.TruckCapacity - parcelSize / 2;
+                DrawParcel(root, dock.Color, false, px, cargoY + cargoH * 0.55f - parcelSize, parcelSize);
+            }
+
+            var cargo = Ui.Box(root, ParcelPalette[dock.Color], cargoX, cargoY, cargoW, cargoH, "Truck cargo");
+            cargo.sprite = Art.TruckCargo;
         }
 
         void DrawBuffer()
@@ -179,6 +208,8 @@ namespace ParcelSort.Game
             int tallest = 1;
             foreach (var stack in state.Stacks) tallest = Mathf.Max(tallest, stack.Count);
             float size = Mathf.Min(colW - 16, (bottom - top) / tallest - 8);
+            // Art parcels are drawn at a slight angle, so they overlap a little to look stacked.
+            float step = Art.ParcelBase != null ? size * 0.9f : size + 8;
 
             for (int s = 0; s < n; s++)
             {
@@ -190,7 +221,7 @@ namespace ParcelSort.Game
                 var stack = state.Stacks[s];
                 for (int i = 0; i < stack.Count; i++)
                 {
-                    float y = (bottom - top) - (i + 1) * (size + 8);
+                    float y = (bottom - top) - size - i * step - 8;
                     DrawParcel(column.transform, stack[i].Color, stack[i].Hidden, (colW - 8 - size) / 2, y, size);
                 }
             }
@@ -200,6 +231,24 @@ namespace ParcelSort.Game
         {
             var box = Ui.Box(parent, hidden ? HiddenColor : ParcelPalette[color], x, y, size, size, "Parcel");
             box.raycastTarget = false;
+            if (Art.ParcelBase != null)
+            {
+                box.preserveAspect = true;
+                if (hidden && Art.ParcelHidden != null)
+                {
+                    box.sprite = Art.ParcelHidden;
+                    box.color = Color.white;
+                    return;
+                }
+                box.sprite = Art.ParcelBase;
+            }
+            if (Art.ParcelBase != null)
+            {
+                // Small mark on the box's front face, until the symbol art arrives.
+                Ui.Label(box.transform, hidden ? "?" : ParcelSymbols[color], (int)(size * 0.28f),
+                    new Color(1, 1, 1, 0.85f), 0, size * 0.12f, size, size);
+                return;
+            }
             Ui.Label(box.transform, hidden ? "?" : ParcelSymbols[color], (int)(size * 0.4f), hidden ? Color.white : Ink, 0, 0, size, size);
         }
 
